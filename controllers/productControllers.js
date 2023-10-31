@@ -1,12 +1,20 @@
 import { catchAsyncError } from "../middlewares/catchAsyncError.js";
 import { Product } from "../model/productModel.js";
 import ErrorHandler from "../utils/ErrorHandler.js";
+import getDataUri from "../utils/datauri.js";
+import cloudinary from "cloudinary";
 
 export const createproducts = catchAsyncError(async (req, res, next) => {
   const { name, price, description, category, createdAt } = req.body;
 
   if (!name || !price || !description || !category)
     return next(new ErrorHandler("Please Enter all The Fields", 404));
+
+  const file = req.file;
+
+  const fileUri = getDataUri(file);
+
+  const mycloud = await cloudinary.v2.uploader.upload(fileUri.content);
 
   await Product.create({
     name,
@@ -15,8 +23,8 @@ export const createproducts = catchAsyncError(async (req, res, next) => {
     category,
     createdAt,
     image: {
-      public_id: "bvjkhsxbgdui",
-      url: "fvbiejsgui",
+      public_id: mycloud.public_id,
+      url: mycloud.secure_url,
     },
   });
 
@@ -56,6 +64,8 @@ export const deleteproduct = catchAsyncError(async (req, res, next) => {
   const product = await Product.findById(req.params.id);
 
   if (!product) return next(new ErrorHandler("Product Not Found", 404));
+
+  await cloudinary.v2.uploader.destroy(product.image.public_id);
 
   await Product.deleteOne();
 
